@@ -2,12 +2,12 @@
 
 namespace Swader\Diffbot\Api;
 
-use \InvalidArgumentException;
 use Swader\Diffbot\Entity\EntityIterator;
 use Swader\Diffbot\Entity\JobCrawl;
 use Swader\Diffbot\Exceptions\DiffbotException;
 use Swader\Diffbot\Interfaces\Api;
 use Swader\Diffbot\Traits\DiffbotAware;
+use \InvalidArgumentException;
 
 /**
  * Class Crawl
@@ -123,9 +123,9 @@ class Crawl
     public function setUrlCrawlPatterns(array $pattern = null)
     {
         $this->otherOptions['urlCrawlPattern'] = ($pattern === null) ? null
-            : implode("||", array_map(function ($item) {
-                return urlencode($item);
-            }, $pattern));
+        : implode("||", array_map(function ($item) {
+            return urlencode($item);
+        }, $pattern));
 
         return $this;
     }
@@ -161,9 +161,9 @@ class Crawl
     public function setUrlProcessPatterns(array $pattern = null)
     {
         $this->otherOptions['urlProcessPattern'] = ($pattern === null) ? null
-            : implode("||", array_map(function ($item) {
-                return urlencode($item);
-            }, $pattern));
+        : implode("||", array_map(function ($item) {
+            return urlencode($item);
+        }, $pattern));
 
         return $this;
     }
@@ -213,10 +213,10 @@ class Crawl
      */
     public function setMaxHops($input = -1)
     {
-        if ((int)$input < -1) {
+        if ((int) $input < -1) {
             $input = -1;
         }
-        $this->otherOptions['maxHops'] = (int)$input;
+        $this->otherOptions['maxHops'] = (int) $input;
 
         return $this;
     }
@@ -229,10 +229,10 @@ class Crawl
      */
     public function setMaxToCrawl($input = 100000)
     {
-        if ((int)$input < 1) {
+        if ((int) $input < 1) {
             $input = 1;
         }
-        $this->otherOptions['maxToCrawl'] = (int)$input;
+        $this->otherOptions['maxToCrawl'] = (int) $input;
 
         return $this;
     }
@@ -245,10 +245,10 @@ class Crawl
      */
     public function setMaxToProcess($input = 100000)
     {
-        if ((int)$input < 1) {
+        if ((int) $input < 1) {
             $input = 1;
         }
-        $this->otherOptions['maxToProcess'] = (int)$input;
+        $this->otherOptions['maxToProcess'] = (int) $input;
 
         return $this;
     }
@@ -298,7 +298,7 @@ class Crawl
             throw new InvalidArgumentException('Input must be numeric.');
         }
         $input = ($input < 0) ? 0.25 : $input;
-        $this->otherOptions['crawlDelay'] = (float)$input;
+        $this->otherOptions['crawlDelay'] = (float) $input;
 
         return $this;
     }
@@ -316,7 +316,7 @@ class Crawl
         if (!is_numeric($input) || !$input) {
             throw new \InvalidArgumentException('Only positive numbers allowed.');
         }
-        $this->otherOptions['repeat'] = (float)$input;
+        $this->otherOptions['repeat'] = (float) $input;
 
         return $this;
     }
@@ -330,7 +330,7 @@ class Crawl
      */
     public function setOnlyProcessIfNew($int = 1)
     {
-        $this->otherOptions['onlyProcessIfNew'] = (int)(bool)$int;
+        $this->otherOptions['onlyProcessIfNew'] = (int) (bool) $int;
 
         return $this;
     }
@@ -344,11 +344,11 @@ class Crawl
      */
     public function setMaxRounds($input = 0)
     {
-        if ((int)$input < -1) {
+        if ((int) $input < -1) {
             $input = -1;
         }
 
-        $this->otherOptions['maxRounds'] = (int)$input;
+        $this->otherOptions['maxRounds'] = (int) $input;
 
         return $this;
     }
@@ -361,11 +361,11 @@ class Crawl
      */
     public function setObeyRobots($bool = true)
     {
-        $this->otherOptions['obeyRobots'] = (int)(bool)$bool;
+        $this->otherOptions['obeyRobots'] = (int) (bool) $bool;
 
         return $this;
     }
-    
+
     /**
      * Set value to 1 to force the use of proxy IPs for the crawl.
      *
@@ -374,7 +374,7 @@ class Crawl
      */
     public function setUseProxies($bool = true)
     {
-        $this->otherOptions['useProxies'] = (int)(bool)$bool;
+        $this->otherOptions['useProxies'] = (int) (bool) $bool;
 
         return $this;
     }
@@ -453,77 +453,109 @@ class Crawl
 
     public function call()
     {
-        $response = $this->diffbot->getHttpClient()->get($this->buildUrl());
 
-        $array = json_decode($response->getBody(), true);
+        $client = new \GuzzleHttp\Client();
 
-        if (isset($array['jobs'])) {
+        $response = $client->request('POST', $this->apiUrl, [
+            'form_params' => $this->buildRequestParams(true),
+        ]);
+
+        $diffbot_response = json_decode($response->getBody()->getContents(), true);
+
+        if (isset($diffbot_response['jobs'])) {
+
             $jobs = [];
-            foreach ($array['jobs'] as $job) {
+            foreach ($diffbot_response['jobs'] as $job) {
                 $jobs[] = new JobCrawl($job);
             }
 
             return new EntityIterator($jobs, $response);
-        } elseif (!isset($array['jobs']) && isset($array['response'])) {
-            return $array['response'];
+
+        } elseif (!isset($diffbot_response['jobs']) && isset($diffbot_response['response'])) {
+
+            return $diffbot_response['response'];
+
         } else {
-            throw new DiffbotException('It appears something went wrong - no data was returned. Did you use the correct token / job name?');
+
+            if (!empty($diffbot_response)) {
+                throw new DiffbotException('Error: ' . print_r($diffbot_response, true));
+            } elseif (!empty($response->getBody())) {
+                throw new DiffbotException('Error: ' . strip_tags($response->getBody()->getContents()));
+            } else {
+                throw new DiffbotException('It appears something went wrong - no data was returned. Did you use the correct token / job name?');
+            }
+
         }
     }
 
     /**
      * Builds out the URL string that gets requested once `call()` is called
      *
+     * @param bool $use_post_method
      * @return string
      */
-    public function buildUrl()
+    public function buildRequestParams($use_post_method = false)
     {
 
-        if (isset($this->otherOptions['urlProcessRegEx'])
-            && !empty($this->otherOptions['urlProcessRegEx'])
-        ) {
-            unset($this->otherOptions['urlProcessPattern']);
-        }
-
-        if (isset($this->otherOptions['urlCrawlRegEx'])
-            && !empty($this->otherOptions['urlCrawlRegEx'])
-        ) {
-            unset($this->otherOptions['urlCrawlPattern']);
-        }
-
-        $url = rtrim($this->apiUrl, '/') . '?';
-
-        // Add token
-        $url .= 'token=' . $this->diffbot->getToken();
+        $request_data = [];
+        $request_data['token'] = $this->diffbot->getToken();
 
         if ($this->getName()) {
+
             // Add name
-            $url .= '&name=' . $this->getName();
+            $request_data['name'] = $this->getName();
 
             // Add seeds
             if (!empty($this->seeds)) {
-                $url .= '&seeds=' . implode('%20', array_map(function ($item) {
+                $request_data['seeds'] = implode('%20', array_map(function ($item) {
                     return urlencode($item);
                 }, $this->seeds));
+            }
+
+            if (isset($this->otherOptions['urlProcessRegEx'])
+                && !empty($this->otherOptions['urlProcessRegEx'])
+            ) {
+                unset($this->otherOptions['urlProcessPattern']);
+            }
+
+            if (isset($this->otherOptions['urlCrawlRegEx'])
+                && !empty($this->otherOptions['urlCrawlRegEx'])
+            ) {
+                unset($this->otherOptions['urlCrawlPattern']);
             }
 
             // Add other options
             if (!empty($this->otherOptions)) {
                 foreach ($this->otherOptions as $option => $value) {
-                    $url .= '&' . $option . '=' . $value;
+                    $request_data[$option] = $value;
                 }
             }
 
             // Add API link
-            $url .= '&apiUrl=' . $this->getApiString();
+            $request_data['apiUrl'] = $this->getApiString();
         }
 
-        return $url;
+        if ($use_post_method) {
+            return $request_data;
+        }
+
+        // using GET method
+        $paramsJoined = [];
+
+        foreach ($request_data as $param => $val) {
+            $paramsJoined[] = $param . '=' . $val;
+        }
+
+        $url_params = implode('&', $paramsJoined);
+        $request_data = rtrim($this->apiUrl, '/') . '?' . $url_params;
+
+        return $request_data;
+
     }
 
     /**
      * Sets the request type to "urls" to retrieve the URL Report
-     * URL for understanding diagnostic data of URLs 
+     * URL for understanding diagnostic data of URLs
      *
      * @return $this
      */
@@ -532,7 +564,7 @@ class Crawl
         $this->otherOptions['type'] = 'urls';
 
         if (!empty($num) && is_numeric($num)) {
-           $this->otherOptions['num'] = $num; 
+            $this->otherOptions['num'] = $num;
         }
 
         // Setup data endpoint
