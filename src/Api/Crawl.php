@@ -510,7 +510,7 @@ class Crawl
 
                 // no need to url encode on POST method
                 if ($use_post_method) {
-                    $request_data['seeds'] = implode('%20', $this->seeds);
+                    $request_data['seeds'] = implode(' ', $this->seeds);
                 } else {
                     $request_data['seeds'] = implode('%20', array_map(function ($item) {
                         return urlencode($item);
