@@ -536,6 +536,7 @@ class Crawl
         }
 
         if ($use_post_method) {
+            $request_data['apiUrl'] = urldecode($request_data['apiUrl']);
             return $request_data;
         }
 
