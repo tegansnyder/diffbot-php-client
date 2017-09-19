@@ -542,7 +542,7 @@ class Crawl
         }
 
         if ($use_post_method) {
-            $request_data['apiUrl'] = 'https://api.diffbot.com/v3/analyze?fields=timeout=600000&fields=meta,breadcrumb&discussion=false&mode=product';
+            $request_data['apiUrl'] = 'https://api.diffbot.com/v3/analyze?timeout=600000&fields=meta,breadcrumb&discussion=false&mode=product';
             $request_data['pageProcessPattern'] = urldecode($request_data['pageProcessPattern']);
             $request_data['urlProcessPattern'] = urldecode($request_data['urlProcessPattern']);
             $request_data['urlCrawlPattern'] = urldecode($request_data['urlCrawlPattern']);
